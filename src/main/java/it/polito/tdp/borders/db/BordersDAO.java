@@ -1,11 +1,13 @@
 package it.polito.tdp.borders.db;
 
 import java.sql.Connection;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import it.polito.tdp.borders.model.Border;
 import it.polito.tdp.borders.model.Country;
@@ -23,7 +25,9 @@ public class BordersDAO {
 			ResultSet rs = st.executeQuery();
 
 			while (rs.next()) {
-				System.out.format("%d %s %s\n", rs.getInt("ccode"), rs.getString("StateAbb"), rs.getString("StateNme"));
+				Country c = new Country(rs.getInt("ccode"), rs.getString("StateAbb"), rs.getString("StateNme"));
+				result.add(c);
+				//System.out.format("%d %s %s\n", rs.getInt("ccode"), rs.getString("StateAbb"), rs.getString("StateNme"));
 			}
 			
 			conn.close();
@@ -36,9 +40,60 @@ public class BordersDAO {
 		}
 	}
 
-	public List<Border> getCountryPairs(int anno) {
+	public List<Border> getCountryPairs(Map<Integer, Country> countryIdMap, int anno) {
+		String sql = "SELECT state1no, state2no " + 
+				"FROM contiguity " + 
+				"WHERE conttype=1 AND year<=?";
+		List<Border> result = new ArrayList<>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, anno);
+			ResultSet rs = st.executeQuery();
 
-		System.out.println("TODO -- BordersDAO -- getCountryPairs(int anno)");
-		return new ArrayList<Border>();
+			while (rs.next()) {
+				Border confine = new Border(countryIdMap.get(rs.getInt("state1no")), countryIdMap.get(rs.getInt("state2no")));
+				result.add(confine);
+			}
+			
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	
+	}
+
+	public List<Country> getCountry(Map<Integer, Country> countryIdMap, int anno) {
+		String sql = "SELECT DISTINCT state1no " + 
+				"FROM contiguity " + 
+				"WHERE conttype=1 AND year<=?";
+		List<Country> result = new ArrayList<Country>();
+		
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, anno);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+			
+				if(!result.contains(countryIdMap.get(rs.getInt("state1no")))) {
+				result.add(countryIdMap.get(rs.getInt("state1no")));
+				}
+			}
+			
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
 	}
 }
